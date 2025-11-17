@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Paisa Personality — Share to Reveal (with Download for testing)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0b1220;--accent:#10b981}
+  body{margin:0;font-family:Inter,system-ui, -apple-system, Roboto, Arial;background:var(--bg);color:#fff}
+  .wrap{max-width:880px;margin:28px auto;padding:20px}
+  .card{background:linear-gradient(180deg,#071022 0%, #06101a 100%);border-radius:12px;padding:18px;box-shadow:0 8px 40px rgba(2,6,23,0.6)}
+  h1{margin:0;font-size:20px}
+  .lead{color:#cbd5e1;font-size:13px;margin-top:8px}
+  .form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  .form input, .form select{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#0e1722;color:#fff}
+  .full{grid-column:1/-1}
+  .actions{display:flex;gap:10px;margin-top:12px;align-items:center}
+  .btn{background:var(--accent);border:0;padding:10px 14px;border-radius:8px;color:#fff;font-weight:700;cursor:pointer}
+  .btn.secondary{background:#2563eb}
+  .note{color:#94a3b8;font-size:13px;margin-top:10px}
+  .preview-area{display:grid;grid-template-columns:1fr;gap:12px;margin-top:18px}
+  .canvas-wrap{background:#071022;padding:12px;border-radius:10px;text-align:center}
+  canvas{max-width:100%;height:auto;border-radius:8px;display:block;margin:0 auto;background:#000}
+  .reveal-msg{margin-top:12px;color:#d1fae5}
+  .manual-btn{margin-top:10px;background:#f59e0b;border:none;padding:8px 12px;border-radius:8px;color:#07212b;font-weight:700;cursor:pointer}
+  .download-btn{margin-top:12px;background:#06b6d4;border:none;padding:10px 14px;border-radius:8px;color:#042022;font-weight:800;cursor:pointer}
+  @media (max-width:720px){
+    .form{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" role="region" aria-label="Paisa Personality share-to-reveal">
+      <h1>Paisa Personality — Share to Reveal</h1>
+      <div class="lead">Enter details. Click Share on Facebook. Your personalized result will appear after the share window closes (or use the manual reveal if popup blocked). Download enabled for testing.</div>
+
+      <form id="revealForm" class="form" onsubmit="return false;" aria-live="polite">
+        <input id="nameInput" type="text" placeholder="Name" aria-label="Name" required />
+        <input id="mobileInput" type="tel" placeholder="Mobile number (10 digits)" aria-label="Mobile number" required />
+        <input id="emailInput" class="full" type="email" placeholder="Email address" aria-label="Email address" required />
+        <label class="full" style="font-size:13px;color:#94a3b8">Select personality (for testing). In production replace selection with quiz result.</label>
+        <select id="personalitySelect" class="full" aria-label="Select personality">
+          <option value="risky">Risky Rockstar</option>
+          <option value="panda">Investor Panda</option>
+          <option value="boss">Budget Boss</option>
+        </select>
+
+        <div class="actions full">
+          <button id="shareBtn" class="btn" type="button">Share on Facebook to Reveal</button>
+          <button id="clearBtn" class="btn secondary" type="button">Clear</button>
+        </div>
+      </form>
+
+      <div class="note">If the share popup is blocked this page offers a manual reveal button to continue testing.</div>
+
+      <div id="preview" class="preview-area" style="display:none;">
+        <div class="canvas-wrap">
+          <canvas id="resultCanvas" width="1200" height="2000" aria-label="Personalized result image"></canvas>
+          <div id="revealText" class="reveal-msg"></div>
+          <button id="manualReveal" class="manual-btn" style="display:none">I shared — Reveal my result</button>
+          <!-- DOWNLOAD BUTTON for testing -->
+          <button id="downloadBtn" class="download-btn" style="display:none">Download PNG (for testing)</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+/* === CONFIG ===
+ Place the 3 final PNGs in same folder as this html:
+ - risky_rockstar.png
+ - investor_panda.png
+ - budget_boss.png
+*/
+const IMG_FILES = { risky: 'risky_rockstar.png', panda: 'investor_panda.png', boss: 'budget_boss.png' };
+const API_SUBMIT = '/api/quiz-submit'; // optional backend
+
+/* DOM */
+const nameInput = document.getElementById('nameInput');
+const mobileInput = document.getElementById('mobileInput');
+const emailInput = document.getElementById('emailInput');
+const personSelect = document.getElementById('personalitySelect');
+const shareBtn = document.getElementById('shareBtn');
+const clearBtn = document.getElementById('clearBtn');
+const previewArea = document.getElementById('preview');
+const canvas = document.getElementById('resultCanvas');
+const ctx = canvas.getContext('2d');
+const revealText = document.getElementById('revealText');
+const manualRevealBtn = document.getElementById('manualReveal');
+const downloadBtn = document.getElementById('downloadBtn');
+
+function validMobile(m){ return /^\d{10}$/.test((m||'').replace(/\D/g,'')); }
+function validEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((e||'')); }
+
+function loadImage(src){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = ()=>resolve(img);
+    img.onerror = ()=>reject(new Error('Failed to load ' + src));
+    img.src = src;
+  });
+}
+
+async function renderPersonalized(personKey, name){
+  const src = IMG_FILES[personKey];
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  try{
+    const img = await loadImage(src);
+    // Fit image to canvas preserving aspect ratio
+    const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+    const w = img.width * scale, h = img.height * scale;
+    const x = (canvas.width - w)/2, y = (canvas.height - h)/2;
+    ctx.drawImage(img, x, y, w, h);
+
+    // Position & glow by persona
+    let nameYFrac = 0.68, glowColor = 'rgba(0,255,200,0.9)';
+    if(personKey === 'panda'){ nameYFrac = 0.62; glowColor = 'rgba(0,240,140,0.95)'; }
+    if(personKey === 'boss'){ nameYFrac = 0.65; glowColor = 'rgba(255,195,60,0.95)'; }
+    if(personKey === 'risky'){ nameYFrac = 0.68; glowColor = 'rgba(255,80,200,0.95)'; }
+
+    if(name && name.trim()){
+      drawGlowingName(ctx, canvas, name.trim(), nameYFrac, glowColor);
+    }
+  }catch(err){
+    console.error(err);
+    ctx.fillStyle = '#071022';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#fff';
+    ctx.font = '24px Inter, sans-serif';
+    ctx.fillText('Base image missing: ' + src, 24, 48);
+  }
+}
+
+function drawGlowingName(ctx, canvas, name, yFrac, glowColor){
+  ctx.save();
+  const cx = canvas.width/2;
+  const y = canvas.height * yFrac;
+  const fontSize = Math.round(canvas.width * 0.11);
+  ctx.font = `800 ${fontSize}px Inter, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // small translucent rect behind text for readability
+  const metrics = ctx.measureText(name);
+  const textW = metrics.width;
+  const padX = fontSize * 0.28, padY = fontSize * 0.35;
+  ctx.beginPath();
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  roundRect(ctx, cx - textW/2 - padX, y - fontSize*0.6, textW + padX*2, fontSize + padY, 12);
+  ctx.fill();
+
+  // glow and text
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur = fontSize * 0.6;
+  ctx.fillStyle = '#fff';
+  ctx.fillText(name, cx, y);
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#dffcf2';
+  ctx.fillText(name, cx, y);
+  ctx.restore();
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  if(w<2*r) r = w/2;
+  if(h<2*r) r = h/2;
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+/* Core: share -> reveal */
+shareBtn.addEventListener('click', async ()=>{
+  const name = nameInput.value.trim();
+  const mobile = mobileInput.value.trim();
+  const email = emailInput.value.trim();
+  const persona = personSelect.value;
+  if(!name){ alert('Enter name'); return; }
+  if(!validMobile(mobile)){ alert('Enter valid 10-digit mobile'); return; }
+  if(!validEmail(email)){ alert('Enter valid email'); return; }
+
+  // send lead (non-blocking)
+  fetch(API_SUBMIT, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name,mobile,email,personality:persona,t:new Date().toISOString()}) })
+    .catch(e=>console.warn('Lead not submitted (ok):', e));
+
+  const siteUrl = location.origin + location.pathname;
+  const quote = encodeURIComponent(`I discovered my Paisa Personality — check yours at ${siteUrl}`);
+  const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(siteUrl)}&quote=${quote}`;
+
+  // try popup
+  const w = 640, h = 520;
+  const left = (screen.width/2)-(w/2), top = (screen.height/2)-(h/2);
+  const win = window.open(shareUrl, 'fbshare', `toolbar=0,status=0,width=${w},height=${h},top=${top},left=${left}`);
+
+  // prepare preview UI
+  previewArea.style.display = 'grid';
+  revealText.textContent = 'Waiting for share to complete...';
+  manualRevealBtn.style.display = 'none';
+  downloadBtn.style.display = 'none';
+
+  if(!win){
+    // popup blocked: open in new tab and show manual reveal
+    manualRevealBtn.style.display = 'inline-block';
+    revealText.textContent = 'Popup blocked — open the share in a new tab then click "I shared — Reveal my result".';
+    window.open(shareUrl, '_blank');
+    return;
+  }
+
+  // poll for closed, with fallback to manual after timeout
+  let closedDetected = false;
+  const poll = setInterval(()=>{
+    try {
+      if(win.closed){
+        closedDetected = true;
+        clearInterval(poll);
+        revealAfterShare(persona, name);
+      }
+    } catch(e){
+      if(win.closed){
+        closedDetected = true;
+        clearInterval(poll);
+        revealAfterShare(persona, name);
+      }
+    }
+  }, 600);
+
+  setTimeout(()=>{
+    if(!closedDetected){
+      manualRevealBtn.style.display = 'inline-block';
+      revealText.textContent = 'If the share popup is still open or blocked, click "I shared — Reveal my result" once you have shared.';
+    }
+  }, 18000);
+});
+
+/* Manual reveal button */
+manualRevealBtn.addEventListener('click', ()=>{
+  const persona = personSelect.value;
+  const name = nameInput.value.trim();
+  revealAfterShare(persona, name);
+});
+
+/* Show personalized canvas and enable download button for testing */
+async function revealAfterShare(persona, name){
+  revealText.textContent = 'Rendering your personalized result...';
+  manualRevealBtn.style.display = 'none';
+  await renderPersonalized(persona, name);
+  revealText.textContent = `Here’s your result — feel free to download for testing. (Remove download in production)`;
+  downloadBtn.style.display = 'inline-block';
+}
+
+/* Download handler (for testing) */
+downloadBtn.addEventListener('click', ()=>{
+  const name = (nameInput.value || 'YourName').trim().replace(/\s+/g,'_');
+  const filename = `paisa_${personSelect.value}_${name}.png`;
+  try{
+    const dataUrl = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }catch(e){
+    alert('Download failed in this browser. Try in Chrome/Firefox or open page directly (not inside CodePen iframe).');
+  }
+});
+
+/* Clear */
+clearBtn.addEventListener('click', ()=>{
+  nameInput.value = '';
+  mobileInput.value = '';
+  emailInput.value = '';
+  personSelect.value = 'risky';
+  previewArea.style.display = 'none';
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  revealText.textContent = '';
+  manualRevealBtn.style.display = 'none';
+  downloadBtn.style.display = 'none';
+});
+
+/* Enter key convenience */
+document.getElementById('revealForm').addEventListener('keydown',(e)=>{
+  if(e.key === 'Enter'){ e.preventDefault(); shareBtn.click(); }
+});
+
+/* hide preview initially */
+previewArea.style.display = 'none';
+downloadBtn.style.display = 'none';
+manualRevealBtn.style.display = 'none';
+</script>
+</body>
+</html>
