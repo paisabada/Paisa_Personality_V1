@@ -3,65 +3,94 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Paisa Personality — Share to Reveal (with Download for testing)</title>
+<title>Paisa Personality — Fine-tuned Name Placement</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
   :root{--bg:#0b1220;--accent:#10b981}
   body{margin:0;font-family:Inter,system-ui, -apple-system, Roboto, Arial;background:var(--bg);color:#fff}
-  .wrap{max-width:880px;margin:28px auto;padding:20px}
-  .card{background:linear-gradient(180deg,#071022 0%, #06101a 100%);border-radius:12px;padding:18px;box-shadow:0 8px 40px rgba(2,6,23,0.6)}
+  .wrap{max-width:920px;margin:20px auto;padding:18px}
+  .card{background:linear-gradient(180deg,#071022 0%, #06101a 100%);border-radius:12px;padding:14px;box-shadow:0 8px 40px rgba(2,6,23,0.6)}
   h1{margin:0;font-size:20px}
   .lead{color:#cbd5e1;font-size:13px;margin-top:8px}
-  .form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  .form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
   .form input, .form select{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#0e1722;color:#fff}
   .full{grid-column:1/-1}
   .actions{display:flex;gap:10px;margin-top:12px;align-items:center}
   .btn{background:var(--accent);border:0;padding:10px 14px;border-radius:8px;color:#fff;font-weight:700;cursor:pointer}
-  .btn.secondary{background:#2563eb}
-  .note{color:#94a3b8;font-size:13px;margin-top:10px}
-  .preview-area{display:grid;grid-template-columns:1fr;gap:12px;margin-top:18px}
-  .canvas-wrap{background:#071022;padding:12px;border-radius:10px;text-align:center}
-  canvas{max-width:100%;height:auto;border-radius:8px;display:block;margin:0 auto;background:#000}
-  .reveal-msg{margin-top:12px;color:#d1fae5}
-  .manual-btn{margin-top:10px;background:#f59e0b;border:none;padding:8px 12px;border-radius:8px;color:#07212b;font-weight:700;cursor:pointer}
-  .download-btn{margin-top:12px;background:#06b6d4;border:none;padding:10px 14px;border-radius:8px;color:#042022;font-weight:800;cursor:pointer}
-  @media (max-width:720px){
-    .form{grid-template-columns:1fr}
-  }
+  .controls-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+  .small{font-size:13px;color:#94a3b8}
+  .preview{display:flex;gap:14px;flex-wrap:wrap;margin-top:16px}
+  .canvas-wrap{background:#071022;padding:12px;border-radius:10px;text-align:center;flex:1;min-width:320px}
+  canvas{width:100%;height:auto;border-radius:8px;background:#000;display:block}
+  .tweak{background:#06101a;padding:10px;border-radius:8px;margin-top:10px;text-align:left}
+  label{font-size:13px;color:#cbd5e1}
+  input[type="range"]{width:160px}
+  .saved{color:#10b981;font-weight:700;margin-left:8px}
+  @media (max-width:760px){ .form{grid-template-columns:1fr} .preview{flex-direction:column} }
 </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="card" role="region" aria-label="Paisa Personality share-to-reveal">
-      <h1>Paisa Personality — Share to Reveal</h1>
-      <div class="lead">Enter details. Click Share on Facebook. Your personalized result will appear after the share window closes (or use the manual reveal if popup blocked). Download enabled for testing.</div>
+    <div class="card">
+      <h1>Paisa Personality — Position Tuner</h1>
+      <div class="lead">Name placement tuned per-image. Use sliders to tweak if necessary — your settings will be saved.</div>
 
-      <form id="revealForm" class="form" onsubmit="return false;" aria-live="polite">
-        <input id="nameInput" type="text" placeholder="Name" aria-label="Name" required />
-        <input id="mobileInput" type="tel" placeholder="Mobile number (10 digits)" aria-label="Mobile number" required />
-        <input id="emailInput" class="full" type="email" placeholder="Email address" aria-label="Email address" required />
-        <label class="full" style="font-size:13px;color:#94a3b8">Select personality (for testing). In production replace selection with quiz result.</label>
-        <select id="personalitySelect" class="full" aria-label="Select personality">
+      <div class="form" style="margin-top:12px">
+        <input id="nameInput" type="text" placeholder="Name (e.g. Ravi)" />
+        <input id="mobileInput" type="tel" placeholder="Mobile (10 digits)" />
+        <input id="emailInput" class="full" type="email" placeholder="Email" />
+        <label class="full small">Select personality (for testing) — in production you'll set this from quiz result.</label>
+        <select id="personSelect" class="full">
           <option value="risky">Risky Rockstar</option>
           <option value="panda">Investor Panda</option>
           <option value="boss">Budget Boss</option>
         </select>
-
         <div class="actions full">
-          <button id="shareBtn" class="btn" type="button">Share on Facebook to Reveal</button>
-          <button id="clearBtn" class="btn secondary" type="button">Clear</button>
+          <button id="renderBtn" class="btn">Render Preview</button>
+          <button id="shareBtn" class="btn" style="background:#2563eb">Share (test)</button>
+          <button id="clearBtn" class="btn" style="background:#6b7280">Clear</button>
         </div>
-      </form>
+      </div>
 
-      <div class="note">If the share popup is blocked this page offers a manual reveal button to continue testing.</div>
-
-      <div id="preview" class="preview-area" style="display:none;">
+      <div class="preview">
         <div class="canvas-wrap">
-          <canvas id="resultCanvas" width="1200" height="2000" aria-label="Personalized result image"></canvas>
-          <div id="revealText" class="reveal-msg"></div>
-          <button id="manualReveal" class="manual-btn" style="display:none">I shared — Reveal my result</button>
-          <!-- DOWNLOAD BUTTON for testing -->
-          <button id="downloadBtn" class="download-btn" style="display:none">Download PNG (for testing)</button>
+          <div style="font-weight:800;margin-bottom:6px" id="cardTitle">Preview</div>
+          <canvas id="resultCanvas" width="1200" height="2000" aria-label="Result preview"></canvas>
+
+          <div class="tweak" id="tweakControls">
+            <div style="display:flex;align-items:center;gap:8px">
+              <label style="min-width:120px">Vertical offset</label>
+              <input id="offsetRange" type="range" min="-0.15" max="0.15" step="0.005" value="0" />
+              <span class="small" id="offsetVal">0.000</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+              <label style="min-width:120px">Font scale</label>
+              <input id="scaleRange" type="range" min="0.7" max="1.4" step="0.01" value="1" />
+              <span class="small" id="scaleVal">1.00</span>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+              <button id="saveSettings" class="btn" style="background:#0ea5a4">Save settings</button>
+              <button id="resetSettings" class="btn" style="background:#ef4444">Reset</button>
+              <div class="small saved" id="savedMsg" style="display:none">Saved ✓</div>
+            </div>
+            <div class="small" style="margin-top:8px;color:#94a3b8">
+              Use these sliders to nudge name placement. Defaults tuned for your three images.
+            </div>
+          </div>
+        </div>
+
+        <div style="flex-basis:320px">
+          <div style="background:#06101a;padding:12px;border-radius:10px">
+            <div style="font-weight:700;margin-bottom:8px">Per-image defaults (you can customize)</div>
+            <div class="small" id="defaultsList"></div>
+            <hr style="border:none;border-top:1px solid rgba(255,255,255,0.04);margin:10px 0">
+            <div style="font-weight:700;margin-bottom:6px">Quick tips</div>
+            <ul class="small" style="margin:0;padding-left:18px;color:#94a3b8">
+              <li>Long names auto-wrap to two lines.</li>
+              <li>If name overlaps artwork, move slider up/down and Save.</li>
+              <li>Saved settings persist in browser (localStorage).</li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -69,102 +98,209 @@
   </div>
 
 <script>
-/* === CONFIG ===
- Place the 3 final PNGs in same folder as this html:
- - risky_rockstar.png
- - investor_panda.png
- - budget_boss.png
+/* ===== CONFIG: image filenames and tuned defaults =====
+   I tuned these default nameYFrac values to match the screenshots you shared.
+   You can adjust them using sliders and hit Save — saved to localStorage.
 */
-const IMG_FILES = { risky: 'risky_rockstar.png', panda: 'investor_panda.png', boss: 'budget_boss.png' };
-const API_SUBMIT = '/api/quiz-submit'; // optional backend
+const IMG_FILES = {
+  risky: 'risky_rockstar.png',
+  panda: 'investor_panda.png',
+  boss:  'budget_boss.png'
+};
 
-/* DOM */
+/* base defaults: nameYFrac = fraction of canvas height where center of name should be */
+const DEFAULTS = {
+  risky: { nameYFrac: 0.68, fontScale: 1.00, glow: 'rgba(255,80,200,0.95)' },   // neon rockstar
+  panda: { nameYFrac: 0.615, fontScale: 1.00, glow: 'rgba(0,240,140,0.95)' },   // panda slightly higher
+  boss:  { nameYFrac: 0.65, fontScale: 1.00, glow: 'rgba(255,195,60,0.95)' }    // boss default
+};
+
+/* load saved overrides from localStorage */
+function loadOverrides(){
+  try{
+    const raw = localStorage.getItem('pp_name_tune_v1');
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){ return {}; }
+}
+function saveOverrides(obj){
+  localStorage.setItem('pp_name_tune_v1', JSON.stringify(obj));
+}
+
+/* state */
+const overrides = loadOverrides();
+const canvas = document.getElementById('resultCanvas');
+const ctx = canvas.getContext('2d');
+
 const nameInput = document.getElementById('nameInput');
 const mobileInput = document.getElementById('mobileInput');
 const emailInput = document.getElementById('emailInput');
-const personSelect = document.getElementById('personalitySelect');
+const personSelect = document.getElementById('personSelect');
+const renderBtn = document.getElementById('renderBtn');
 const shareBtn = document.getElementById('shareBtn');
 const clearBtn = document.getElementById('clearBtn');
-const previewArea = document.getElementById('preview');
-const canvas = document.getElementById('resultCanvas');
-const ctx = canvas.getContext('2d');
-const revealText = document.getElementById('revealText');
-const manualRevealBtn = document.getElementById('manualReveal');
-const downloadBtn = document.getElementById('downloadBtn');
 
-function validMobile(m){ return /^\d{10}$/.test((m||'').replace(/\D/g,'')); }
-function validEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((e||'')); }
+const offsetRange = document.getElementById('offsetRange');
+const scaleRange = document.getElementById('scaleRange');
+const offsetVal = document.getElementById('offsetVal');
+const scaleVal = document.getElementById('scaleVal');
+const saveBtn = document.getElementById('saveSettings');
+const resetBtn = document.getElementById('resetSettings');
+const savedMsg = document.getElementById('savedMsg');
+const defaultsList = document.getElementById('defaultsList');
 
+function getConfigFor(person){
+  const base = DEFAULTS[person] || {nameYFrac:0.68,fontScale:1,glow:'rgba(0,255,200,0.9)'};
+  const saved = (overrides[person] || {});
+  return {
+    nameYFrac: (saved.nameYFrac !== undefined) ? saved.nameYFrac : base.nameYFrac,
+    fontScale: (saved.fontScale !== undefined) ? saved.fontScale : base.fontScale,
+    glow: base.glow
+  };
+}
+
+/* show current defaults on side */
+function renderDefaultsList(){
+  defaultsList.innerHTML = Object.keys(DEFAULTS).map(k => {
+    const cfg = getConfigFor(k);
+    return `<div style="margin-bottom:6px"><strong>${k}</strong> — y:${cfg.nameYFrac.toFixed(3)}, scale:${cfg.fontScale.toFixed(2)}</div>`;
+  }).join('');
+}
+renderDefaultsList();
+
+/* load current person settings into sliders */
+function loadSlidersFor(person){
+  const cfg = getConfigFor(person);
+  offsetRange.value = 0; // offset slider is additive, default 0
+  scaleRange.value = cfg.fontScale;
+  offsetVal.textContent = Number(offsetRange.value).toFixed(3);
+  scaleVal.textContent = Number(scaleRange.value).toFixed(2);
+}
+
+/* helper to load image */
 function loadImage(src){
   return new Promise((resolve,reject)=>{
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = ()=>resolve(img);
-    img.onerror = ()=>reject(new Error('Failed to load ' + src));
-    img.src = src;
+    const i = new Image();
+    i.crossOrigin = 'anonymous';
+    i.onload = ()=>resolve(i);
+    i.onerror = ()=>reject(new Error('Failed to load: ' + src));
+    i.src = src;
   });
 }
 
-async function renderPersonalized(personKey, name){
-  const src = IMG_FILES[personKey];
+/* render function — uses config + slider offset to position name */
+async function renderPreview(){
+  const person = personSelect.value;
+  const name = (nameInput.value || '').trim();
+  const imgSrc = IMG_FILES[person];
+  const cfg = getConfigFor(person);
+  const offset = parseFloat(offsetRange.value) || 0; // additive fraction
+  const scaleMult = parseFloat(scaleRange.value) || 1.0;
+
   ctx.clearRect(0,0,canvas.width,canvas.height);
   try{
-    const img = await loadImage(src);
-    // Fit image to canvas preserving aspect ratio
+    const img = await loadImage(imgSrc);
+    // Fit to canvas preserving aspect ratio
     const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
     const w = img.width * scale, h = img.height * scale;
     const x = (canvas.width - w)/2, y = (canvas.height - h)/2;
     ctx.drawImage(img, x, y, w, h);
 
-    // Position & glow by persona
-    let nameYFrac = 0.68, glowColor = 'rgba(0,255,200,0.9)';
-    if(personKey === 'panda'){ nameYFrac = 0.62; glowColor = 'rgba(0,240,140,0.95)'; }
-    if(personKey === 'boss'){ nameYFrac = 0.65; glowColor = 'rgba(255,195,60,0.95)'; }
-    if(personKey === 'risky'){ nameYFrac = 0.68; glowColor = 'rgba(255,80,200,0.95)'; }
-
-    if(name && name.trim()){
-      drawGlowingName(ctx, canvas, name.trim(), nameYFrac, glowColor);
+    if(name){
+      const targetY = canvas.height * (cfg.nameYFrac + offset);
+      const glow = cfg.glow || 'rgba(0,255,200,0.9)';
+      drawNameWrapped(ctx, canvas, name, targetY, glow, scaleMult);
     }
-  }catch(err){
-    console.error(err);
+  }catch(e){
+    console.warn(e);
     ctx.fillStyle = '#071022';
     ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle = '#fff';
-    ctx.font = '24px Inter, sans-serif';
-    ctx.fillText('Base image missing: ' + src, 24, 48);
+    ctx.font = '20px Inter, sans-serif';
+    ctx.fillText('Image not found: ' + imgSrc, 20, 40);
   }
 }
 
-function drawGlowingName(ctx, canvas, name, yFrac, glowColor){
+/* drawNameWrapped: tries single-line; if too wide -> two-line wrap, centered; draws glow */
+function drawNameWrapped(ctx, canvas, name, nameCenterY, glowColor, scaleMult){
   ctx.save();
-  const cx = canvas.width/2;
-  const y = canvas.height * yFrac;
-  const fontSize = Math.round(canvas.width * 0.11);
-  ctx.font = `800 ${fontSize}px Inter, sans-serif`;
+  const centerX = canvas.width / 2;
+
+  // base font size relative to canvas width and scaleMult
+  const baseFont = Math.round(canvas.width * 0.11 * scaleMult); // tune
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  ctx.font = `800 ${baseFont}px Inter, sans-serif`;
 
-  // small translucent rect behind text for readability
-  const metrics = ctx.measureText(name);
-  const textW = metrics.width;
-  const padX = fontSize * 0.28, padY = fontSize * 0.35;
+  // measure and wrap if needed
+  let metrics = ctx.measureText(name);
+  const maxWidth = canvas.width * 0.78; // padding
+  let lines = [name];
+  if(metrics.width > maxWidth){
+    // split into two approx halves by word
+    const parts = name.split(' ');
+    if(parts.length === 1){
+      // single long word: scale down until fits
+      let s = scaleMult;
+      while(true){
+        ctx.font = `800 ${Math.round(canvas.width * 0.11 * s)}px Inter, sans-serif`;
+        if(ctx.measureText(name).width <= maxWidth || s < 0.6) break;
+        s -= 0.03;
+      }
+      // update baseFont for final draw
+    } else {
+      // greedy wrap into two lines
+      let left = parts.slice(0, Math.ceil(parts.length/2)).join(' ');
+      let right = parts.slice(Math.ceil(parts.length/2)).join(' ');
+      // if left too big, shift words
+      while(ctx.measureText(left).width > maxWidth && left.includes(' ')){
+        const p = left.split(' ');
+        right = p.pop() + ' ' + right;
+        left = p.join(' ');
+      }
+      lines = [left, right];
+    }
+  }
+
+  // compute vertical spacing
+  const lineCount = lines.length;
+  const lineHeight = baseFont * 1.05;
+  // center the multiline block on nameCenterY
+  const blockTop = nameCenterY - ((lineCount - 1) * lineHeight) / 2;
+
+  // draw soft background rectangle for readability
+  const longest = lines.reduce((m, l) => {
+    ctx.font = `800 ${baseFont}px Inter, sans-serif`;
+    const w = ctx.measureText(l).width;
+    return w > m ? w : m;
+  }, 0);
+  const rectPadX = baseFont * 0.28, rectPadY = baseFont * 0.36;
+  const rectW = longest + rectPadX * 2;
+  const rectH = lineHeight * lineCount + rectPadY;
+  const rectX = centerX - rectW / 2;
+  const rectY = blockTop - rectPadY/2 - lineHeight/2;
+
   ctx.beginPath();
   ctx.fillStyle = 'rgba(255,255,255,0.06)';
-  roundRect(ctx, cx - textW/2 - padX, y - fontSize*0.6, textW + padX*2, fontSize + padY, 12);
+  roundRect(ctx, rectX, rectY, rectW, rectH, 14);
   ctx.fill();
 
-  // glow and text
-  ctx.shadowColor = glowColor;
-  ctx.shadowBlur = fontSize * 0.6;
-  ctx.fillStyle = '#fff';
-  ctx.fillText(name, cx, y);
-
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#dffcf2';
-  ctx.fillText(name, cx, y);
+  // draw each line with glow
+  for(let i=0;i<lineCount;i++){
+    const ly = blockTop + i * lineHeight;
+    ctx.font = `800 ${baseFont}px Inter, sans-serif`;
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = baseFont * 0.55;
+    ctx.fillStyle = '#fff';
+    ctx.fillText(lines[i], centerX, ly);
+    // inner fill override
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#dffcf2';
+    ctx.fillText(lines[i], centerX, ly);
+  }
   ctx.restore();
 }
 
+/* rounded rect helper */
 function roundRect(ctx,x,y,w,h,r){
   if(w<2*r) r = w/2;
   if(h<2*r) r = h/2;
@@ -177,124 +313,87 @@ function roundRect(ctx,x,y,w,h,r){
   ctx.closePath();
 }
 
-/* Core: share -> reveal */
+/* event wiring */
+renderBtn.addEventListener('click', ()=>{ renderPreview(); });
+personSelect.addEventListener('change', ()=>{
+  loadSlidersFor(personSelect.value);
+  renderDefaultsList();
+  renderPreview();
+});
+offsetRange.addEventListener('input', ()=>{ offsetVal.textContent = Number(offsetRange.value).toFixed(3); renderPreview(); });
+scaleRange.addEventListener('input', ()=>{ scaleVal.textContent = Number(scaleRange.value).toFixed(2); renderPreview(); });
+
+saveBtn.addEventListener('click', ()=>{
+  const person = personSelect.value;
+  const cfg = getConfigFor(person);
+  // create overrides record (save combined nameYFrac + slider offset)
+  if(!overrides[person]) overrides[person] = {};
+  overrides[person].nameYFrac = cfg.nameYFrac + parseFloat(offsetRange.value);
+  overrides[person].fontScale = parseFloat(scaleRange.value);
+  saveOverrides(overrides);
+  savedMsg.style.display = 'inline-block';
+  setTimeout(()=> savedMsg.style.display = 'none', 1600);
+  renderDefaultsList();
+});
+
+resetBtn.addEventListener('click', ()=>{
+  const person = personSelect.value;
+  delete overrides[person];
+  saveOverrides(overrides);
+  loadSlidersFor(person);
+  renderDefaultsList();
+  renderPreview();
+});
+
+/* clear */
+clearBtn.addEventListener('click', ()=>{
+  nameInput.value=''; mobileInput.value=''; emailInput.value='';
+  personSelect.value='risky';
+  loadSlidersFor('risky');
+  renderPreview();
+});
+
+/* simple share button for testing (uses navigator.share or fallback) */
 shareBtn.addEventListener('click', async ()=>{
   const name = nameInput.value.trim();
   const mobile = mobileInput.value.trim();
   const email = emailInput.value.trim();
-  const persona = personSelect.value;
-  if(!name){ alert('Enter name'); return; }
-  if(!validMobile(mobile)){ alert('Enter valid 10-digit mobile'); return; }
-  if(!validEmail(email)){ alert('Enter valid email'); return; }
-
-  // send lead (non-blocking)
-  fetch(API_SUBMIT, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name,mobile,email,personality:persona,t:new Date().toISOString()}) })
-    .catch(e=>console.warn('Lead not submitted (ok):', e));
-
-  const siteUrl = location.origin + location.pathname;
-  const quote = encodeURIComponent(`I discovered my Paisa Personality — check yours at ${siteUrl}`);
-  const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(siteUrl)}&quote=${quote}`;
-
-  // try popup
-  const w = 640, h = 520;
-  const left = (screen.width/2)-(w/2), top = (screen.height/2)-(h/2);
-  const win = window.open(shareUrl, 'fbshare', `toolbar=0,status=0,width=${w},height=${h},top=${top},left=${left}`);
-
-  // prepare preview UI
-  previewArea.style.display = 'grid';
-  revealText.textContent = 'Waiting for share to complete...';
-  manualRevealBtn.style.display = 'none';
-  downloadBtn.style.display = 'none';
-
-  if(!win){
-    // popup blocked: open in new tab and show manual reveal
-    manualRevealBtn.style.display = 'inline-block';
-    revealText.textContent = 'Popup blocked — open the share in a new tab then click "I shared — Reveal my result".';
-    window.open(shareUrl, '_blank');
+  if(!name || !/^\d{10}$/.test(mobile.replace(/\D/g,'')) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    alert('Please enter Name + valid 10-digit Mobile + valid Email before sharing.');
     return;
   }
+  // For testing we'll open FB share in new tab (most reliable)
+  const siteUrl = location.origin + location.pathname;
+  const shareText = `I discovered my Paisa Personality — try it: ${siteUrl}`;
+  const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(siteUrl)}&quote=${encodeURIComponent(shareText)}`;
 
-  // poll for closed, with fallback to manual after timeout
-  let closedDetected = false;
-  const poll = setInterval(()=>{
+  // try navigator.share first (mobile)
+  if(navigator.share){
     try {
-      if(win.closed){
-        closedDetected = true;
-        clearInterval(poll);
-        revealAfterShare(persona, name);
-      }
+      await navigator.share({ title:'Paisa Personality', text: shareText, url: siteUrl });
+      // reveal immediately after native share
+      renderPreview();
+      alert('Shared via native share — preview updated.');
+      return;
     } catch(e){
-      if(win.closed){
-        closedDetected = true;
-        clearInterval(poll);
-        revealAfterShare(persona, name);
-      }
+      console.warn('Native share failed or cancelled', e);
     }
-  }, 600);
-
-  setTimeout(()=>{
-    if(!closedDetected){
-      manualRevealBtn.style.display = 'inline-block';
-      revealText.textContent = 'If the share popup is still open or blocked, click "I shared — Reveal my result" once you have shared.';
-    }
-  }, 18000);
-});
-
-/* Manual reveal button */
-manualRevealBtn.addEventListener('click', ()=>{
-  const persona = personSelect.value;
-  const name = nameInput.value.trim();
-  revealAfterShare(persona, name);
-});
-
-/* Show personalized canvas and enable download button for testing */
-async function revealAfterShare(persona, name){
-  revealText.textContent = 'Rendering your personalized result...';
-  manualRevealBtn.style.display = 'none';
-  await renderPersonalized(persona, name);
-  revealText.textContent = `Here’s your result — feel free to download for testing. (Remove download in production)`;
-  downloadBtn.style.display = 'inline-block';
-}
-
-/* Download handler (for testing) */
-downloadBtn.addEventListener('click', ()=>{
-  const name = (nameInput.value || 'YourName').trim().replace(/\s+/g,'_');
-  const filename = `paisa_${personSelect.value}_${name}.png`;
-  try{
-    const dataUrl = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }catch(e){
-    alert('Download failed in this browser. Try in Chrome/Firefox or open page directly (not inside CodePen iframe).');
   }
+  window.open(shareUrl, '_blank');
+  // show preview area now so user can check; in your funnel you'll reveal after share close
+  renderPreview();
+  alert('Share tab opened — after sharing close the tab and re-open this page to see final preview (or use your funnel flow).');
 });
 
-/* Clear */
-clearBtn.addEventListener('click', ()=>{
-  nameInput.value = '';
-  mobileInput.value = '';
-  emailInput.value = '';
-  personSelect.value = 'risky';
-  previewArea.style.display = 'none';
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  revealText.textContent = '';
-  manualRevealBtn.style.display = 'none';
-  downloadBtn.style.display = 'none';
-});
-
-/* Enter key convenience */
-document.getElementById('revealForm').addEventListener('keydown',(e)=>{
-  if(e.key === 'Enter'){ e.preventDefault(); shareBtn.click(); }
-});
-
-/* hide preview initially */
-previewArea.style.display = 'none';
-downloadBtn.style.display = 'none';
-manualRevealBtn.style.display = 'none';
+/* on load, initialize */
+(function init(){
+  // set sliders to stored values or defaults
+  loadSlidersFor(personSelect.value);
+  offsetVal.textContent = Number(offsetRange.value).toFixed(3);
+  scaleVal.textContent = Number(scaleRange.value).toFixed(2);
+  renderDefaultsList();
+  renderPreview();
+})();
 </script>
 </body>
 </html>
