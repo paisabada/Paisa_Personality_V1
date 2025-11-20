@@ -2,259 +2,307 @@
 <html>
 <head>
 <meta charset="utf-8" />
-<title>Paisa OG Name Placer — per-image safe placement</title>
+<title>Paisa — Safe OG Name Placer (tweakable)</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
-  body{font-family:Inter,system-ui,Arial,sans-serif;margin:18px;background:#f3f4f6;color:#111;display:flex;gap:18px;align-items:flex-start}
-  .panel{width:360px;background:#fff;padding:14px;border-radius:10px;box-shadow:0 8px 24px rgba(8,12,20,0.06)}
-  label{display:block;margin-top:10px;font-weight:600;color:#223}
-  select,input{width:100%;padding:10px;border-radius:8px;border:1px solid #e5e7eb;margin-top:6px;font-size:15px}
-  button{padding:10px 12px;border-radius:8px;border:0;cursor:pointer;margin-top:10px}
-  .btn-primary{background:#2563eb;color:#fff}
-  .btn-ghost{background:#fff;border:1px solid #ddd}
-  canvas{border-radius:10px;box-shadow:0 12px 30px rgba(2,6,23,0.08);background:#000}
-  .hint{font-size:13px;color:#556; margin-top:8px}
-  .small{font-size:13px;color:#666;margin-top:6px}
+  body{font-family:Inter,Arial,Helvetica,sans-serif;margin:16px;background:#f7fafc;color:#0f172a;display:flex;gap:16px;align-items:flex-start}
+  .panel{width:360px;background:#fff;padding:14px;border-radius:10px;box-shadow:0 8px 20px rgba(2,6,23,0.06)}
+  h3{margin:0 0 6px 0}
+  label{display:block;margin-top:10px;font-weight:600;color:#102a43}
+  select,input,button{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eef6;margin-top:6px;font-size:14px}
+  .row{display:flex;gap:8px}
+  .small{font-size:13px;color:#566; margin-top:8px}
+  canvas{border-radius:8px;box-shadow:0 12px 30px rgba(2,6,23,0.08);background:#000}
+  .controls{display:flex;gap:8px;margin-top:8px}
+  .btn{padding:9px;border-radius:8px;border:0;cursor:pointer}
+  .btn-primary{background:#0b69ff;color:#fff}
+  .btn-ghost{background:#fff;border:1px solid #e6eef6}
+  .slider{width:100%}
+  .mini{font-size:12px;color:#667}
 </style>
 </head>
 <body>
 
 <div class="panel">
-  <h3 style="margin:0 0 6px 0">Paisa — Safe Name Placer</h3>
-  <div class="small">Positions pre-tuned for your 3 OG images; auto color + background box for readability.</div>
+  <h3>Paisa OG Name Placer</h3>
+  <div class="small">Per-image defaults tuned. Use sliders to nudge & Save so HTML needn't change later.</div>
 
-  <label>Choose OG image</label>
+  <label>Select OG image</label>
   <select id="ogSelect"></select>
 
-  <label>Name (will be placed on image)</label>
-  <input id="nameInput" type="text" placeholder="Type name (e.g. Ravi)" maxlength="30" />
+  <label>Name (text to place)</label>
+  <input id="nameInput" placeholder="Type name (e.g. Ravi)" maxlength="28"/>
 
-  <label>Mobile (optional)</label>
-  <input id="mobInput" type="tel" placeholder="Not drawn — saved for record" />
+  <label>Vertical offset (nudge name up/down)</label>
+  <input id="offsetSlider" type="range" min="-200" max="200" value="0" class="slider"/>
+  <div class="mini">Use this to move name vertically for current image. Changes auto-save.</div>
 
-  <label>Email (optional)</label>
-  <input id="emailInput" type="email" placeholder="Not drawn — saved for record" />
-
-  <div style="display:flex;gap:8px;">
-    <button id="applyBtn" class="btn-primary">Apply</button>
-    <button id="downloadBtn" class="btn-ghost">Download PNG</button>
+  <label>Font scale (smaller / larger)</label>
+  <input id="scaleSlider" type="range" min="60" max="160" value="100" class="slider"/>
+  <div style="display:flex;gap:8px;margin-top:8px;">
+    <button id="applyBtn" class="btn btn-primary">Preview</button>
+    <button id="downloadBtn" class="btn btn-ghost">Download PNG</button>
   </div>
 
-  <div class="hint">
-    If position needs tiny tweak later I can move that image's Y value — but this is tuned to avoid faces/artwork.
+  <div style="display:flex;gap:8px;margin-top:8px;">
+    <button id="resetBtn" class="btn btn-ghost">Reset to defaults</button>
+    <button id="saveBtn" class="btn btn-ghost">Save settings (local)</button>
+  </div>
+
+  <div class="small" style="margin-top:8px">
+    Tip: Choose image → type name → use vertical offset to move name away from face → click Download.
   </div>
 </div>
 
 <div>
   <canvas id="ogCanvas" width="1200" height="630"></canvas>
-  <div class="small">Preview 1200×630 — click Download to save PNG for testing.</div>
+  <div class="small">Preview (1200×630). After download, test OG share on FB/Twitter card debugger.</div>
 </div>
 
 <script>
-/* Configuration:
-   - images: array of objects {id, label, src, nameY, preferColor}
-     nameY = vertical canvas coordinate where the name baseline will sit (px)
-     preferColor = optional override, 'auto' = sample color
-*/
+/* --- CONFIG: replace src with your real raw urls if needed --- */
 const images = [
-  { id:'budget', label:'Budget Boss', src:'budget_boss_og.png', nameY: 420, preferColor: 'auto' },
-  { id:'risky', label:'Risky Rockstar', src:'risky_rockstar_og.png', nameY: 360, preferColor: 'auto' },
-  { id:'panda', label:'Investor Panda', src:'investor_panda_og.png', nameY: 430, preferColor: 'auto' }
+  { id:'budget', label:'Budget Boss', src:'budget_boss_og.png', def:{x:600,y:480, font:110 }},
+  { id:'risky', label:'Risky Rockstar', src:'risky_rockstar_og.png', def:{x:600,y:280, font:110 }},
+  { id:'panda', label:'Investor Panda', src:'investor_panda_og.png', def:{x:600,y:520, font:110 }}
 ];
 
 const canvas = document.getElementById('ogCanvas');
 const ctx = canvas.getContext('2d');
 const ogSelect = document.getElementById('ogSelect');
 const nameInput = document.getElementById('nameInput');
+const offsetSlider = document.getElementById('offsetSlider');
+const scaleSlider = document.getElementById('scaleSlider');
 const applyBtn = document.getElementById('applyBtn');
 const downloadBtn = document.getElementById('downloadBtn');
+const resetBtn = document.getElementById('resetBtn');
+const saveBtn = document.getElementById('saveBtn');
 
 const canvasW = canvas.width, canvasH = canvas.height;
-const maxNameWidth = Math.round(canvasW * 0.78);
-const fontBase = '700';
-const fontFamily = 'Poppins, Arial, sans-serif';
+const storageKey = 'paisa_name_settings_v1';
 
 // fill select
-images.forEach(img => {
-  const opt = document.createElement('option');
-  opt.value = img.id;
-  opt.textContent = img.label + ' (' + img.src + ')';
+images.forEach(it=>{
+  const opt = document.createElement('option'); opt.value = it.id; opt.textContent = it.label;
   ogSelect.appendChild(opt);
 });
 
-// map id -> object for quick lookup
+// map
 const imgMap = {};
-images.forEach(i => imgMap[i.id] = i);
+images.forEach(i=> imgMap[i.id]=i);
 
-// load image by id
-let currentImage = null;
-function loadImageById(id) {
+// load saved settings
+let saved = {};
+try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e){ saved = {}; }
+
+// get per-image setting or default
+function getSettings(id){
+  const base = imgMap[id].def;
+  const s = saved[id] || {};
+  return {
+    x: s.x || base.x,
+    y: s.y || base.y,
+    font: s.font || base.font,
+    offset: s.offset || 0,
+    scalePct: s.scalePct || 100
+  };
+}
+
+let current = { img:null, cfg:null };
+
+// load image
+function loadImageById(id){
   const cfg = imgMap[id];
   if(!cfg) return;
   const img = new Image();
   img.crossOrigin = "anonymous";
   img.onload = function(){
-    currentImage = {img:img, cfg:cfg};
+    current = {img, cfg};
+    // set sliders based on saved
+    const s = getSettings(id);
+    offsetSlider.value = s.offset;
+    scaleSlider.value = s.scalePct;
     render();
   };
   img.onerror = function(){
     ctx.clearRect(0,0,canvasW,canvasH);
-    ctx.fillStyle = '#eee';
-    ctx.fillRect(0,0,canvasW,canvasH);
-    ctx.fillStyle = '#333';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Image failed to load: ' + cfg.src, canvasW/2, canvasH/2);
+    ctx.fillStyle='#eee'; ctx.fillRect(0,0,canvasW,canvasH);
+    ctx.fillStyle='#333'; ctx.font='16px Arial'; ctx.textAlign='center';
+    ctx.fillText('Failed to load: '+cfg.src, canvasW/2, canvasH/2);
   };
   img.src = cfg.src;
 }
 
-// draw base image cover (cover behavior)
-function drawBase(img) {
+// draw image (cover) and return draw rect
+function drawCover(img){
   ctx.clearRect(0,0,canvasW,canvasH);
   const ratio = Math.max(canvasW/img.width, canvasH/img.height);
   const iw = img.width*ratio, ih = img.height*ratio;
   const ix = (canvasW - iw)/2, iy = (canvasH - ih)/2;
   ctx.drawImage(img, ix, iy, iw, ih);
-  // return rectangle area where image actually sits (useful if we want to sample)
   return {ix,iy,iw,ih};
 }
 
-// sample average color in a small box around name area to decide light/dark text
-function sampleAreaColor(x, y, w, h) {
-  try {
-    const sx = Math.max(0, Math.round(x - w/2));
-    const sy = Math.max(0, Math.round(y - h/2));
-    const sw = Math.min(canvasW - sx, Math.round(w));
-    const sh = Math.min(canvasH - sy, Math.round(h));
-    const data = ctx.getImageData(sx, sy, sw, sh).data;
-    let r=0,g=0,b=0,count=0;
-    for(let i=0;i<data.length;i+=4){
-      r += data[i]; g += data[i+1]; b += data[i+2]; count++;
-    }
-    r = Math.round(r/count); g = Math.round(g/count); b = Math.round(b/count);
-    return {r,g,b};
-  } catch(e){
-    // security/CORS or other error -> fallback to dark bg
-    return {r:40,g:40,b:40};
-  }
+// sample area color
+function sample(x,y,w,h){
+  try{
+    const sx = Math.max(0, Math.round(x - w/2)), sy = Math.max(0, Math.round(y - h/2));
+    const sw = Math.min(canvasW - sx, Math.round(w)), sh = Math.min(canvasH - sy, Math.round(h));
+    const d = ctx.getImageData(sx,sy,sw,sh).data;
+    let r=0,g=0,b=0,c=0;
+    for(let i=0;i<d.length;i+=4){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; c++; }
+    return {r:Math.round(r/c), g:Math.round(g/c), b:Math.round(b/c)};
+  }catch(e){ return {r:45,g:45,b:45}; }
 }
+function lum(rgb){ return (0.2126*rgb.r + 0.7152*rgb.g + 0.0722*rgb.b)/255; }
 
-// luminance -> 0..1
-function luminance(rgb){ return (0.2126*rgb.r + 0.7152*rgb.g + 0.0722*rgb.b)/255; }
-
-function drawName(name, cfg) {
+// draw name with small rounded translucent box and auto color, using per-image settings + sliders
+function drawNameOn(cfg){
+  const name = nameInput.value.trim();
   if(!name) return;
-  // font sizing loop
-  let fontSize = 110;
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'center';
-  ctx.font = `${fontBase} ${fontSize}px ${fontFamily}`;
+  const s = getSettings(cfg.id);
+  const offset = Number(offsetSlider.value || 0);
+  const scalePct = Number(scaleSlider.value || 100)/100;
+
+  const baseFont = Math.round(s.font * scalePct);
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.font = `700 ${baseFont}px Poppins, Arial`;
+  // measure
   let measured = ctx.measureText(name).width;
-  while(measured > maxNameWidth && fontSize > 18){
+  const maxW = canvasW * 0.78;
+  // shrink font if too wide
+  let fontSize = baseFont;
+  while(measured > maxW && fontSize>18){
     fontSize -= 2;
-    ctx.font = `${fontBase} ${fontSize}px ${fontFamily}`;
+    ctx.font = `700 ${fontSize}px Poppins, Arial`;
     measured = ctx.measureText(name).width;
   }
+  const x = s.x;
+  const y = s.y + offset;
 
-  const x = canvasW/2;
-  const y = cfg.nameY;
+  // sample area under text to choose color
+  const sampleColor = sample(x, y, Math.min(measured, maxW), Math.max(40,fontSize*1.1));
+  const useWhite = (lum(sampleColor) < 0.55);
 
-  // sample average color in the area to choose light/dark text
-  const sample = sampleAreaColor(x, y, Math.min(measured, maxNameWidth), Math.max(40, fontSize*1.2));
-  const lum = luminance(sample);
-  // if background is dark -> use white text; if light -> use dark text
-  const useWhite = (lum < 0.55);
-
-  // draw translucent rounded rectangle behind text for guaranteed legibility
-  const paddingX = 28, paddingY = Math.round(fontSize*0.45);
-  const rectW = measured + paddingX*2;
-  const rectH = fontSize + paddingY*2;
-  const rectX = x - rectW/2;
-  const rectY = y - rectH/2;
-  // rectangle color - choose opposite of text with low opacity
-  ctx.save();
+  // draw rounded rect just a bit bigger than text (not huge)
+  const padX = Math.round(fontSize*0.28), padY = Math.round(fontSize*0.38);
+  const rectW = measured + padX*2;
+  const rectH = fontSize + padY*2;
+  const rx = x - rectW/2;
+  const ry = y - rectH/2;
+  const radius = Math.min(14, Math.round(rectH/4));
   ctx.beginPath();
-  const radius = 12;
-  roundRectPath(ctx, rectX, rectY, rectW, rectH, radius);
+  roundRectPath(ctx, rx, ry, rectW, rectH, radius);
   ctx.closePath();
   if(useWhite){
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; // dark translucent behind white text
   } else {
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillStyle = 'rgba(255,255,255,0.88)'; // light behind dark text
   }
   ctx.fill();
-  ctx.restore();
 
-  // draw text with subtle shadow if needed
-  ctx.save();
+  // draw text
+  ctx.font = `700 ${fontSize}px Poppins, Arial`;
   if(useWhite){
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = 'rgba(0,0,0,0.55)';
-    ctx.shadowBlur = 10;
+    ctx.shadowColor = 'rgba(0,0,0,0.45)';
+    ctx.shadowBlur = 8;
   } else {
-    ctx.fillStyle = '#0b2a1a'; // dark greenish (looks nice on light backgrounds)
+    ctx.fillStyle = '#0b2a1a';
     ctx.shadowColor = 'rgba(255,255,255,0.2)';
     ctx.shadowBlur = 0;
   }
-  ctx.font = `${fontBase} ${fontSize}px ${fontFamily}`;
   ctx.fillText(name, x, y);
-  ctx.restore();
+  ctx.shadowBlur = 0;
 }
 
-// helper to draw rounded rect path
-function roundRectPath(ctx, x, y, w, h, r){
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
+// helper
+function roundRectPath(ctx,x,y,w,h,r){
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
 }
 
-// render entire preview
+// main render
 function render(){
-  if(!currentImage) return;
-  const cfg = currentImage.cfg;
-  drawBase(currentImage.img);
-  drawName(nameInput.value.trim(), cfg);
+  if(!current.img) return;
+  drawCover(current.img);
+  drawNameOn(current.cfg);
 }
 
-// UI wiring
-ogSelect.addEventListener('change', function(){ loadImageById(this.value); });
+// events
+ogSelect.addEventListener('change', function(){
+  loadImageById(this.value);
+});
 applyBtn.addEventListener('click', render);
 nameInput.addEventListener('input', render);
+offsetSlider.addEventListener('input', render);
+scaleSlider.addEventListener('input', render);
+
 downloadBtn.addEventListener('click', function(){
   render();
-  const link = document.createElement('a');
-  link.download = 'paisa_result.png';
-  link.href = canvas.toDataURL('image/png');
-  link.click();
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = 'paisa_result.png';
+  a.click();
 });
 
-// populate select with our images array values (use src as text)
-(function initSelect(){
-  const sel = ogSelect;
-  sel.innerHTML = '';
+// save current slider values into local storage per-image
+saveBtn.addEventListener('click', function(){
+  if(!current.cfg) return;
+  const id = current.cfg.id;
+  saved[id] = saved[id] || {};
+  saved[id].offset = Number(offsetSlider.value||0);
+  saved[id].scalePct = Number(scaleSlider.value||100);
+  // also store base x,y,font if changed by some future UI (kept for extensibility)
+  saved[id].x = saved[id].x || imgMap[id].def.x;
+  saved[id].y = saved[id].y || imgMap[id].def.y;
+  saved[id].font = saved[id].font || imgMap[id].def.font;
+  localStorage.setItem(storageKey, JSON.stringify(saved));
+  alert('Settings saved locally for ' + current.cfg.label);
+});
+resetBtn.addEventListener('click', function(){
+  if(!current.cfg) return;
+  const id = current.cfg.id;
+  // clear saved for this id
+  if(saved[id]) delete saved[id];
+  localStorage.setItem(storageKey, JSON.stringify(saved));
+  // reset sliders to defaults
+  const s = getSettings(id);
+  offsetSlider.value = 0;
+  scaleSlider.value = 100;
+  render();
+  alert('Reset to defaults for ' + current.cfg.label);
+});
+
+// initialize
+(function init(){
+  ogSelect.innerHTML = '';
   images.forEach(it=>{
-    const o = document.createElement('option'); o.value = it.id; o.textContent = it.label + ' — ' + it.src;
-    sel.appendChild(o);
+    const o = document.createElement('option'); o.value=it.id; o.textContent=it.label;
+    ogSelect.appendChild(o);
   });
-  // load first by default
   loadImageById(images[0].id);
 })();
 
 function loadImageById(id){
-  const cfg = imgMap[id] || images.find(i=>i.id===id);
-  if(!cfg) return;
+  const cfg = imgMap[id];
   const img = new Image();
   img.crossOrigin = "anonymous";
-  img.onload = function(){ currentImage = {img, cfg}; render(); };
+  img.onload = function(){ current = {img,cfg}; // set sliders from saved if exists
+    const s = saved[id] || {};
+    offsetSlider.value = s.offset || 0;
+    scaleSlider.value = s.scalePct || 100;
+    render();
+  };
   img.onerror = function(){
     ctx.clearRect(0,0,canvasW,canvasH);
-    ctx.fillStyle = '#eee'; ctx.fillRect(0,0,canvasW,canvasH);
-    ctx.fillStyle = '#333'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.font = '16px Arial';
-    ctx.fillText('Failed to load: ' + cfg.src, canvasW/2, canvasH/2);
+    ctx.fillStyle='#eee'; ctx.fillRect(0,0,canvasW,canvasH);
+    ctx.fillStyle='#333'; ctx.font='16px Arial'; ctx.textAlign='center';
+    ctx.fillText('Failed to load: '+cfg.src, canvasW/2, canvasH/2);
   };
   img.src = cfg.src;
 }
