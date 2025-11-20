@@ -2,18 +2,16 @@
 <html>
 <head>
 <meta charset="utf-8" />
-<title>Paisa — Safe OG Name Placer (tweakable)</title>
+<title>Paisa — OG Name Placer (No box + contain)</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
-  body{font-family:Inter,Arial,Helvetica,sans-serif;margin:16px;background:#f7fafc;color:#0f172a;display:flex;gap:16px;align-items:flex-start}
+  body{font-family:Inter,Arial,Helvetica,sans-serif;margin:16px;background:#f3f6fb;color:#0f172a;display:flex;gap:16px;align-items:flex-start}
   .panel{width:360px;background:#fff;padding:14px;border-radius:10px;box-shadow:0 8px 20px rgba(2,6,23,0.06)}
   h3{margin:0 0 6px 0}
   label{display:block;margin-top:10px;font-weight:600;color:#102a43}
   select,input,button{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eef6;margin-top:6px;font-size:14px}
-  .row{display:flex;gap:8px}
   .small{font-size:13px;color:#566; margin-top:8px}
-  canvas{border-radius:8px;box-shadow:0 12px 30px rgba(2,6,23,0.08);background:#000}
-  .controls{display:flex;gap:8px;margin-top:8px}
+  canvas{border-radius:8px;box-shadow:0 12px 30px rgba(2,6,23,0.08);background:#000;display:block}
   .btn{padding:9px;border-radius:8px;border:0;cursor:pointer}
   .btn-primary{background:#0b69ff;color:#fff}
   .btn-ghost{background:#fff;border:1px solid #e6eef6}
@@ -24,8 +22,8 @@
 <body>
 
 <div class="panel">
-  <h3>Paisa OG Name Placer</h3>
-  <div class="small">Per-image defaults tuned. Use sliders to nudge & Save so HTML needn't change later.</div>
+  <h3>Paisa OG Name Placer — No box</h3>
+  <div class="small">Removed white box. Images are now drawn to *contain* so full image visible. Use sliders to nudge name so it doesn't overlap faces.</div>
 
   <label>Select OG image</label>
   <select id="ogSelect"></select>
@@ -34,38 +32,40 @@
   <input id="nameInput" placeholder="Type name (e.g. Ravi)" maxlength="28"/>
 
   <label>Vertical offset (nudge name up/down)</label>
-  <input id="offsetSlider" type="range" min="-200" max="200" value="0" class="slider"/>
-  <div class="mini">Use this to move name vertically for current image. Changes auto-save.</div>
+  <input id="offsetSlider" type="range" min="-300" max="300" value="0" class="slider"/>
+  <div class="mini">Negative = move up, Positive = move down.</div>
 
-  <label>Font scale (smaller / larger)</label>
-  <input id="scaleSlider" type="range" min="60" max="160" value="100" class="slider"/>
+  <label>Font scale (%)</label>
+  <input id="scaleSlider" type="range" min="50" max="200" value="100" class="slider"/>
+
   <div style="display:flex;gap:8px;margin-top:8px;">
     <button id="applyBtn" class="btn btn-primary">Preview</button>
     <button id="downloadBtn" class="btn btn-ghost">Download PNG</button>
   </div>
 
   <div style="display:flex;gap:8px;margin-top:8px;">
-    <button id="resetBtn" class="btn btn-ghost">Reset to defaults</button>
-    <button id="saveBtn" class="btn btn-ghost">Save settings (local)</button>
+    <button id="resetBtn" class="btn btn-ghost">Reset</button>
+    <button id="saveBtn" class="btn btn-ghost">Save (local)</button>
   </div>
 
   <div class="small" style="margin-top:8px">
-    Tip: Choose image → type name → use vertical offset to move name away from face → click Download.
+    Tip: choose image → type name → nudge with vertical offset → save. If name still overlaps, reduce Font scale or move it.
   </div>
 </div>
 
 <div>
   <canvas id="ogCanvas" width="1200" height="630"></canvas>
-  <div class="small">Preview (1200×630). After download, test OG share on FB/Twitter card debugger.</div>
+  <div class="small">Preview (1200×630). After download, test Facebook/Twitter card debugger.</div>
 </div>
 
 <script>
-/* --- CONFIG: replace src with your real raw urls if needed --- */
+/* ---------- CONFIG: replace src values with your actual raw GitHub image URLs ---------- */
 const images = [
-  { id:'budget', label:'Budget Boss', src:'budget_boss_og.png', def:{x:600,y:480, font:110 }},
-  { id:'risky', label:'Risky Rockstar', src:'risky_rockstar_og.png', def:{x:600,y:280, font:110 }},
-  { id:'panda', label:'Investor Panda', src:'investor_panda_og.png', def:{x:600,y:520, font:110 }}
+  { id:'budget', label:'Budget Boss', src:'https://raw.githubusercontent.com/YOURUSER/YOURREPO/main/budget_og_1200x630.png', def:{x:600,y:470,font:120}},
+  { id:'risky', label:'Risky Rockstar', src:'https://raw.githubusercontent.com/YOURUSER/YOURREPO/main/risky_og_1200x630.png', def:{x:600,y:380,font:120}},
+  { id:'panda', label:'Investor Panda', src:'https://raw.githubusercontent.com/YOURUSER/YOURREPO/main/panda_og_1200x630.png', def:{x:600,y:500,font:120}}
 ];
+/* ------------------------------------------------------------------------------------- */
 
 const canvas = document.getElementById('ogCanvas');
 const ctx = canvas.getContext('2d');
@@ -78,171 +78,136 @@ const downloadBtn = document.getElementById('downloadBtn');
 const resetBtn = document.getElementById('resetBtn');
 const saveBtn = document.getElementById('saveBtn');
 
-const canvasW = canvas.width, canvasH = canvas.height;
-const storageKey = 'paisa_name_settings_v1';
-
-// fill select
-images.forEach(it=>{
-  const opt = document.createElement('option'); opt.value = it.id; opt.textContent = it.label;
-  ogSelect.appendChild(opt);
-});
-
-// map
-const imgMap = {};
-images.forEach(i=> imgMap[i.id]=i);
-
-// load saved settings
+const storageKey = 'paisa_og_settings_v2';
 let saved = {};
 try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e){ saved = {}; }
 
-// get per-image setting or default
-function getSettings(id){
-  const base = imgMap[id].def;
-  const s = saved[id] || {};
-  return {
-    x: s.x || base.x,
-    y: s.y || base.y,
-    font: s.font || base.font,
-    offset: s.offset || 0,
-    scalePct: s.scalePct || 100
-  };
-}
+function saveLocal(){ localStorage.setItem(storageKey, JSON.stringify(saved)); }
+
+images.forEach(it=>{
+  const o = document.createElement('option'); o.value=it.id; o.textContent=it.label; ogSelect.appendChild(o);
+});
 
 let current = { img:null, cfg:null };
 
-// load image
-function loadImageById(id){
-  const cfg = imgMap[id];
-  if(!cfg) return;
+function loadImage(cfg){
   const img = new Image();
   img.crossOrigin = "anonymous";
-  img.onload = function(){
-    current = {img, cfg};
-    // set sliders based on saved
-    const s = getSettings(id);
-    offsetSlider.value = s.offset;
-    scaleSlider.value = s.scalePct;
+  img.onload = () => {
+    current = { img, cfg };
+    // set sliders from saved
+    const s = saved[cfg.id] || {};
+    offsetSlider.value = s.offset || 0;
+    scaleSlider.value = s.scalePct || 100;
     render();
   };
-  img.onerror = function(){
-    ctx.clearRect(0,0,canvasW,canvasH);
-    ctx.fillStyle='#eee'; ctx.fillRect(0,0,canvasW,canvasH);
+  img.onerror = () => {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#eee'; ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle='#333'; ctx.font='16px Arial'; ctx.textAlign='center';
-    ctx.fillText('Failed to load: '+cfg.src, canvasW/2, canvasH/2);
+    ctx.fillText('Failed to load: '+cfg.src, canvas.width/2, canvas.height/2);
   };
   img.src = cfg.src;
 }
 
-// draw image (cover) and return draw rect
-function drawCover(img){
-  ctx.clearRect(0,0,canvasW,canvasH);
-  const ratio = Math.max(canvasW/img.width, canvasH/img.height);
-  const iw = img.width*ratio, ih = img.height*ratio;
-  const ix = (canvasW - iw)/2, iy = (canvasH - ih)/2;
+/* draw image in CONTAIN mode (fit fully inside canvas) */
+function drawContain(img){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+  const iw = img.width * scale, ih = img.height * scale;
+  const ix = (canvas.width - iw)/2, iy = (canvas.height - ih)/2;
   ctx.drawImage(img, ix, iy, iw, ih);
   return {ix,iy,iw,ih};
 }
 
-// sample area color
-function sample(x,y,w,h){
-  try{
-    const sx = Math.max(0, Math.round(x - w/2)), sy = Math.max(0, Math.round(y - h/2));
-    const sw = Math.min(canvasW - sx, Math.round(w)), sh = Math.min(canvasH - sy, Math.round(h));
-    const d = ctx.getImageData(sx,sy,sw,sh).data;
-    let r=0,g=0,b=0,c=0;
-    for(let i=0;i<d.length;i+=4){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; c++; }
-    return {r:Math.round(r/c), g:Math.round(g/c), b:Math.round(b/c)};
-  }catch(e){ return {r:45,g:45,b:45}; }
-}
-function lum(rgb){ return (0.2126*rgb.r + 0.7152*rgb.g + 0.0722*rgb.b)/255; }
-
-// draw name with small rounded translucent box and auto color, using per-image settings + sliders
-function drawNameOn(cfg){
+/* draw name WITHOUT box; use stroke + shadow to ensure readability */
+function drawNameWithoutBox(cfg){
   const name = nameInput.value.trim();
   if(!name) return;
-  const s = getSettings(cfg.id);
+  const s = saved[cfg.id] || {};
   const offset = Number(offsetSlider.value || 0);
   const scalePct = Number(scaleSlider.value || 100)/100;
+  let baseFont = (cfg.def && cfg.def.font) ? cfg.def.font : 120;
+  baseFont = Math.round(baseFont * scalePct);
 
-  const baseFont = Math.round(s.font * scalePct);
-  ctx.textAlign='center';
-  ctx.textBaseline='middle';
+  // start with baseFont, but shrink if text too wide
   ctx.font = `700 ${baseFont}px Poppins, Arial`;
-  // measure
   let measured = ctx.measureText(name).width;
-  const maxW = canvasW * 0.78;
-  // shrink font if too wide
-  let fontSize = baseFont;
-  while(measured > maxW && fontSize>18){
-    fontSize -= 2;
-    ctx.font = `700 ${fontSize}px Poppins, Arial`;
+  const maxW = canvas.width * 0.85;
+  while(measured > maxW && baseFont > 18){
+    baseFont -= 4;
+    ctx.font = `700 ${baseFont}px Poppins, Arial`;
     measured = ctx.measureText(name).width;
   }
-  const x = s.x;
-  const y = s.y + offset;
 
-  // sample area under text to choose color
-  const sampleColor = sample(x, y, Math.min(measured, maxW), Math.max(40,fontSize*1.1));
-  const useWhite = (lum(sampleColor) < 0.55);
+  // final coordinates
+  const x = (s.x || cfg.def.x || canvas.width/2);
+  const y = (s.y || cfg.def.y || canvas.height*0.6) + offset;
 
-  // draw rounded rect just a bit bigger than text (not huge)
-  const padX = Math.round(fontSize*0.28), padY = Math.round(fontSize*0.38);
-  const rectW = measured + padX*2;
-  const rectH = fontSize + padY*2;
-  const rx = x - rectW/2;
-  const ry = y - rectH/2;
-  const radius = Math.min(14, Math.round(rectH/4));
-  ctx.beginPath();
-  roundRectPath(ctx, rx, ry, rectW, rectH, radius);
-  ctx.closePath();
-  if(useWhite){
-    ctx.fillStyle = 'rgba(0,0,0,0.45)'; // dark translucent behind white text
-  } else {
-    ctx.fillStyle = 'rgba(255,255,255,0.88)'; // light behind dark text
-  }
-  ctx.fill();
+  // pick text color by sampling area behind (to decide stroke/light)
+  // sample small area
+  let sampleColor = {r:30,g:30,b:30};
+  try {
+    const sx = Math.max(0, Math.round(x - measured/2));
+    const sy = Math.max(0, Math.round(y - baseFont));
+    const sw = Math.min(canvas.width - sx, Math.round(measured));
+    const sh = Math.min(canvas.height - sy, Math.round(baseFont*1.2));
+    const data = ctx.getImageData(sx,sy,Math.max(1,sw),Math.max(1,sh)).data;
+    let r=0,g=0,b=0,c=0;
+    for(let i=0;i<data.length;i+=4){ r+=data[i]; g+=data[i+1]; b+=data[i+2]; c++; }
+    sampleColor = {r: Math.round(r/c), g: Math.round(g/c), b: Math.round(b/c)};
+  } catch(e){ /* ignore cross-origin errors - fallback to dark */ }
 
-  // draw text
-  ctx.font = `700 ${fontSize}px Poppins, Arial`;
+  const lum = (0.2126*sampleColor.r + 0.7152*sampleColor.g + 0.0722*sampleColor.b)/255;
+  const useWhite = lum < 0.55; // if bg is dark -> white text
+
+  // text shadow + stroke for contrast (no rectangle)
+  ctx.font = `700 ${baseFont}px Poppins, Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
   if(useWhite){
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = 'rgba(0,0,0,0.45)';
+    ctx.lineWidth = Math.max(3, Math.round(baseFont*0.06));
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
     ctx.shadowBlur = 8;
   } else {
-    ctx.fillStyle = '#0b2a1a';
-    ctx.shadowColor = 'rgba(255,255,255,0.2)';
+    ctx.fillStyle = '#073018';
+    ctx.lineWidth = Math.max(2, Math.round(baseFont*0.05));
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.shadowColor = 'rgba(0,0,0,0.05)';
     ctx.shadowBlur = 0;
   }
+
+  // draw stroke then fill - stroke helps legibility without box
+  ctx.lineJoin = 'round';
+  ctx.strokeText(name, x, y);
   ctx.fillText(name, x, y);
+
+  // cleanup shadows
   ctx.shadowBlur = 0;
 }
 
-// helper
-function roundRectPath(ctx,x,y,w,h,r){
-  ctx.moveTo(x+r,y);
-  ctx.arcTo(x+w,y,x+w,y+h,r);
-  ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r);
-  ctx.arcTo(x,y,x+w,y,r);
-}
-
-// main render
+/* MAIN render */
 function render(){
-  if(!current.img) return;
-  drawCover(current.img);
-  drawNameOn(current.cfg);
+  if(!current.img || !current.cfg) return;
+  drawContain(current.img);
+  drawNameWithoutBox(current.cfg);
 }
 
-// events
-ogSelect.addEventListener('change', function(){
-  loadImageById(this.value);
+/* UI events */
+ogSelect.addEventListener('change', ()=> {
+  const id = ogSelect.value;
+  const cfg = images.find(i=>i.id===id);
+  loadImage(cfg);
 });
 applyBtn.addEventListener('click', render);
 nameInput.addEventListener('input', render);
 offsetSlider.addEventListener('input', render);
 scaleSlider.addEventListener('input', render);
 
-downloadBtn.addEventListener('click', function(){
+downloadBtn.addEventListener('click', ()=>{
   render();
   const a = document.createElement('a');
   a.href = canvas.toDataURL('image/png');
@@ -250,62 +215,36 @@ downloadBtn.addEventListener('click', function(){
   a.click();
 });
 
-// save current slider values into local storage per-image
-saveBtn.addEventListener('click', function(){
+saveBtn.addEventListener('click', ()=>{
   if(!current.cfg) return;
   const id = current.cfg.id;
   saved[id] = saved[id] || {};
   saved[id].offset = Number(offsetSlider.value||0);
   saved[id].scalePct = Number(scaleSlider.value||100);
-  // also store base x,y,font if changed by some future UI (kept for extensibility)
-  saved[id].x = saved[id].x || imgMap[id].def.x;
-  saved[id].y = saved[id].y || imgMap[id].def.y;
-  saved[id].font = saved[id].font || imgMap[id].def.font;
-  localStorage.setItem(storageKey, JSON.stringify(saved));
+  // keep defaults x,y,font if present in def
+  saved[id].x = saved[id].x || current.cfg.def.x;
+  saved[id].y = saved[id].y || current.cfg.def.y;
+  saved[id].font = saved[id].font || current.cfg.def.font;
+  saveLocal();
   alert('Settings saved locally for ' + current.cfg.label);
 });
-resetBtn.addEventListener('click', function(){
+resetBtn.addEventListener('click', ()=>{
   if(!current.cfg) return;
   const id = current.cfg.id;
-  // clear saved for this id
   if(saved[id]) delete saved[id];
-  localStorage.setItem(storageKey, JSON.stringify(saved));
-  // reset sliders to defaults
-  const s = getSettings(id);
+  saveLocal();
   offsetSlider.value = 0;
   scaleSlider.value = 100;
   render();
-  alert('Reset to defaults for ' + current.cfg.label);
+  alert('Reset done for ' + current.cfg.label);
 });
 
-// initialize
+/* init */
 (function init(){
-  ogSelect.innerHTML = '';
-  images.forEach(it=>{
-    const o = document.createElement('option'); o.value=it.id; o.textContent=it.label;
-    ogSelect.appendChild(o);
-  });
-  loadImageById(images[0].id);
+  // set default select and load
+  ogSelect.value = images[0].id;
+  loadImage(images[0]);
 })();
-
-function loadImageById(id){
-  const cfg = imgMap[id];
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.onload = function(){ current = {img,cfg}; // set sliders from saved if exists
-    const s = saved[id] || {};
-    offsetSlider.value = s.offset || 0;
-    scaleSlider.value = s.scalePct || 100;
-    render();
-  };
-  img.onerror = function(){
-    ctx.clearRect(0,0,canvasW,canvasH);
-    ctx.fillStyle='#eee'; ctx.fillRect(0,0,canvasW,canvasH);
-    ctx.fillStyle='#333'; ctx.font='16px Arial'; ctx.textAlign='center';
-    ctx.fillText('Failed to load: '+cfg.src, canvasW/2, canvasH/2);
-  };
-  img.src = cfg.src;
-}
 </script>
 </body>
 </html>
